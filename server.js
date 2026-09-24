@@ -10,24 +10,20 @@ app.use(express.json());
 const PORT = 3000;
 
 
-// BANCO SIMULADO
+// BANCO 
+const mysql = require("mysql2/promise");
 
-let usuarios = [];
+const db = mysql.createPool({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "auth"
+});
 
 
 // INICIAR SERVIDOR
 
 async function iniciar() {
-
-    const senhaHash = await bcrypt.hash("123456", 10);
-
-    usuarios.push({
-        id: 1,
-        nome: "Ricardo",
-        email: "ricardo@email.com",
-        senha: senhaHash
-    });
-
     app.listen(PORT, () => {
         console.log(`Servidor rodando na porta ${PORT}`);
     });
@@ -48,44 +44,63 @@ app.post("/auth/login", async (req, res) => {
 
     const { email, senha } = req.body;
 
-    const usuario = usuarios.find(
-        usuario => usuario.email === email
-    );
+    try {
 
-    if (!usuario) {
-        return res.status(401).json({
-            mensagem: "Email ou senha inválidos"
-        });
-    }
+        // Buscar usuário no banco
+        const [usuarios] = await db.execute(
+            "SELECT * FROM usuarios WHERE email = ?",
+            [email]
+        );
 
-    const senhaValida = await bcrypt.compare(
-        senha,
-        usuario.senha
-    );
-
-    if (!senhaValida) {
-        return res.status(401).json({
-            mensagem: "Email ou senha inválidos"
-        });
-    }
-
-    const token = jwt.sign(
-        {
-            id: usuario.id,
-            email: usuario.email
-        },
-        process.env.JWT_SECRET,
-        {
-            expiresIn: "1h"
+        // Verificar se encontrou o usuário
+        if (usuarios.length === 0) {
+            return res.status(401).json({
+                mensagem: "Email ou senha inválidos"
+            });
         }
-    );
 
-    return res.json({
-        mensagem: "Login realizado com sucesso",
-        token
-    });
+        const usuario = usuarios[0];
+
+        // Comparar senha informada com a senha criptografada
+        const senhaValida = await bcrypt.compare(
+            senha,
+            usuario.senha
+        );
+
+        if (!senhaValida) {
+            return res.status(401).json({
+                mensagem: "Email ou senha inválidos"
+            });
+        }
+
+        // Gerar novo token
+        const token = jwt.sign(
+            {
+                id: usuario.id,
+                email: usuario.email
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: "1h"
+            }
+        );
+
+        return res.json({
+            mensagem: "Login realizado com sucesso",
+            token
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        return res.status(500).json({
+            mensagem: "Erro interno do servidor"
+        });
+
+    }
+
 });
-
 
 // =====================================
 // MIDDLEWARE
