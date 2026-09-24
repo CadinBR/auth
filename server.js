@@ -36,9 +36,7 @@ app.get("/", (req, res) => {
     });
 });
 
-// =====================================
 // LOGIN
-// =====================================
 
 app.post("/auth/login", async (req, res) => {
 
@@ -102,9 +100,7 @@ app.post("/auth/login", async (req, res) => {
 
 });
 
-// =====================================
 // MIDDLEWARE
-// =====================================
 
 function authMiddleware(req, res, next) {
 
@@ -138,9 +134,7 @@ function authMiddleware(req, res, next) {
 }
 
 
-// =====================================
 // ROTA PROTEGIDA
-// =====================================
 
 app.get("/usuario/perfil", authMiddleware, (req, res) => {
 
